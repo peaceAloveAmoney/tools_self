@@ -1,0 +1,75 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+use File::Basename;
+#############################
+#   2018-7-5                #
+#	Yuanyuan Zeng  			#
+#############################
+
+my($ppn, $node, $mem, $jobname, $script, $comand, $tempdir);
+
+GetOptions(
+	'p=i' => \$ppn,
+	'n=i' => \$node,
+	'm=s' => \$mem,
+	'N=s' => \$jobname,
+	'job=s' => \$script,
+	'comand=s' => \$comand,
+	'tempdir=s' => \$tempdir
+	);
+
+### usage
+die "\nUsage: run -job job.sh\n
+run -comand \"Rscript job.R par1 par2\" -N test
+Options:
+	-p 	ppn, default 1
+	-n 	nodes, default 1
+	-m 	memery, default 2GB
+	-N 	job name, default RUN
+	-tempdir 	temp dir for temp scripts
+
+author: Yuanyuan Zeng, 17324399215\@163.com\n" unless (defined($script));
+
+## set default values
+$tempdir ||= "/public/home/swgenetics_3/zengyuanyuan/Scripts/job_submit/temp";
+$node ||= 1;
+$ppn ||= 1;
+$mem ||= "2GB";
+$jobname ||= "RUN";
+
+#my $logdir = dirname($script);
+
+###================================================
+`touch $tempdir/recording.txt`;
+my @line = split(" ",`wc -l $tempdir/recording.txt`);
+my $number = 0 x (4 - length($line[0])) . ($line[0] + 1);
+#print $number,"\n";
+
+
+open(TEMP, ">", "$tempdir/job$number.sh");
+
+if(defined $script){
+print TEMP "#PBS -N $jobname
+#PBS -o $script.o
+#PBS -e $script.e
+#PBS -q SWH
+#PBS -l nodes=$node:ppn=$ppn,mem=$mem
+#PBS -l walltime=500:00:00
+sh $script\n";
+}
+if(defined $comand){
+print TEMP "#PBS -N $jobname
+#PBS -o $script.o
+#PBS -e $script.e
+#PBS -q SWH
+#PBS -l nodes=$node:ppn=$ppn,mem=$mem
+#PBS -l walltime=500:00:00
+\n";
+}
+
+system("qsub $tempdir/job$number.sh");
+`echo "submit job$number" >> $tempdir/recording.txt`;
+close TEMP;
